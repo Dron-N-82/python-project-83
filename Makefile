@@ -18,3 +18,7 @@ build:
 # запуск приложения на render.com
 render-start:
 	gunicorn -w 5 -b 0.0.0.0:$(PORT) page_analyzer:app
+
+# линтер Ruff
+lint:
+    uv run ruff check page_analyzer
