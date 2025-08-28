@@ -27,8 +27,9 @@ def index():
 #        return "SQL подключение выполнено"
     app.logger.info("Получен запрос к главной странице")
     value = ''
-    messages = get_flashed_messages(with_categories=True)
-    return render_template('index.html', value=value, messages=messages), 200
+#    messages = get_flashed_messages(with_categories=True)
+    return render_template('index.html', value=value), 200
+
 
 @app.route("/urls")
 def urls_get():
@@ -42,27 +43,29 @@ def urls_get():
 
 @app.route("/urls", methods=['POST'])
 def add_url():
-    urls = urlparse(request.form.get('url'))
-#    print(urls)
-    name = f'{urls.scheme}://{urls.netloc}'
-#    print(name)
+    name = request.form.get('url')
+    urls = urlparse(name)
+
+    norm_url = f'{urls.scheme}://{urls.netloc}'
+
     sql_check = "SELECT id FROM urls WHERE name = %s"
     sql_ins = "INSERT INTO urls (name) VALUES (%s)"
+    
     if url(name): # Проверка на валидность
         app.logger.info("Добавляем ссылку в БД")
         try:
             with conn:
                 with conn.cursor() as curs:
                     # Проверка существования записи
-                    curs.execute(sql_check, (name,))
+                    curs.execute(sql_check, (norm_url,))
                     data = curs.fetchone()
                     if data: # если запись в БД существует
                         app.logger.info("Такая ссылка уже есть в базе.")
                         flash('URL уже существует', 'info')
                     else: # если записи в БД нет
-                        curs.execute(sql_ins, (name,))
+                        curs.execute(sql_ins, (norm_url,))
                         app.logger.info("Cсылка успешно добавлна в БД")
-                        curs.execute(sql_check, (name,))
+                        curs.execute(sql_check, (norm_url,))
                         data = curs.fetchone()
                         flash('URL успешно добавлен', 'success')
         except Exception as e:
@@ -70,7 +73,8 @@ def add_url():
     else:
         app.logger.info('Некорректный URL')
         flash('Некорректный URL', 'danger')
-        return render_template('index.html', value=name), 422
+        messages = get_flashed_messages(with_categories=True)
+        return render_template('index.html', messages=messages, value=name), 422
 #        return redirect(url_for('index'), code=302)
 #    print(data[0])
 #    print(data[1])
