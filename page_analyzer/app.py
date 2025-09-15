@@ -15,11 +15,6 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
 conn = psycopg2.connect(DATABASE_URL)
 
-'''
-@app.route("/")
-def hello():
-    return "Welcome to Flask!"
-'''
 
 @app.route("/")
 def index():
@@ -27,18 +22,22 @@ def index():
 #        return "SQL подключение выполнено"
     app.logger.info("Получен запрос к главной странице")
     value = ''
-#    messages = get_flashed_messages(with_categories=True)
     return render_template('index.html', value=value), 200
-
 
 @app.route("/urls")
 def urls_get():
-    sql = "SELECT id, name FROM urls ORDER BY id DESC"
-#    with conn.cursor(cursor_factory=RealDictCursor) as curs:
+    sql = """SELECT
+                u.id,
+                u.name,
+            MAX(uc.created_at) AS check_date
+            FROM urls u
+            LEFT JOIN url_checks uc ON uc.url_id = u.id
+            GROUP BY u.id, u.name
+            ORDER BY u.id DESC;
+        """
     with conn.cursor() as curs:
         curs.execute(sql)
         all_urls = curs.fetchall()
-#        print(all_urls)
     return render_template('list_urls.html', urls=all_urls)
 
 @app.route("/urls", methods=['POST'])
@@ -75,11 +74,6 @@ def add_url():
         flash('Некорректный URL', 'danger')
         messages = get_flashed_messages(with_categories=True)
         return render_template('index.html', messages=messages, value=name), 422
-#        return redirect(url_for('index'), code=302)
-#    print(data[0])
-#    print(data[1])
-#    return render_template('show.html'), 200
-    
     return redirect(url_for('show_url', id=data[0]), code=302)
 
 @app.route("/urls/<id>")
@@ -89,17 +83,33 @@ def show_url(id):
                 name,
                 TO_CHAR(created_at, 'YYYY-MM-DD') AS date
                 FROM urls WHERE  id = %s"""
+    sql_ch = """SELECT id, created_at
+                FROM url_checks WHERE  url_id = %s
+                ORDER BY created_at DESC"""
     with conn:
         with conn.cursor() as curs:
             curs.execute(sql, (id,))
             data = curs.fetchone()
-#            name = curs.fetchone()[1]
-#            date = curs.fetchone()[2]
+            curs.execute(sql_ch, (id,))
+            check_data = curs.fetchall()
     return render_template(
         'show.html',
         id=data[0],
         name=data[1],
         date=data[2],
+        check_data=check_data,
         messages=messages,
     )
 
+@app.route("/urls/<id>/checks", methods=['POST'])
+def add_check_url(id):
+    sql_ins = """INSERT INTO url_checks (url_id,
+                                        status_code,
+                                        h1, title,
+                                        description)
+                VALUES (%s, %s, %s, %s, %s)
+                """
+    with conn:
+        with conn.cursor() as curs:
+            curs.execute(sql_ins, (id, '0', 'n/a', 'n/a', 'n/a',))
+    return redirect(url_for('show_url', id=id), code=302)
