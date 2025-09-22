@@ -1,6 +1,7 @@
 import psycopg2
 #from psycopg2.extras import RealDictCursor
 import os
+import requests
 from flask import Flask, render_template, \
     request, flash, get_flashed_messages, \
     redirect, url_for
@@ -26,18 +27,32 @@ def index():
 
 @app.route("/urls")
 def urls_get():
-    sql = """SELECT
+
+    sql = """
+        SELECT *
+        FROM (
+            SELECT DISTINCT ON (u.id)
                 u.id,
                 u.name,
-            MAX(uc.created_at) AS check_date
+                uc.created_at AS check_date,
+                uc.status_code
             FROM urls u
             LEFT JOIN url_checks uc ON uc.url_id = u.id
-            GROUP BY u.id, u.name
-            ORDER BY u.id DESC;
-        """
+            ORDER BY u.id, uc.created_at DESC
+        ) sub
+        ORDER BY sub.id DESC;
+        """        
     with conn.cursor() as curs:
         curs.execute(sql)
         all_urls = curs.fetchall()
+#        print(all_urls)
+#        for row in all_urls:
+#            print(row)
+#            if row[2] is None:
+#                row[2] = ''
+#            if row[3] is None:
+#                row[3] = ''
+
     return render_template('list_urls.html', urls=all_urls)
 
 @app.route("/urls", methods=['POST'])
@@ -83,7 +98,7 @@ def show_url(id):
                 name,
                 TO_CHAR(created_at, 'YYYY-MM-DD') AS date
                 FROM urls WHERE  id = %s"""
-    sql_ch = """SELECT id, created_at
+    sql_ch = """SELECT id, status_code, created_at
                 FROM url_checks WHERE  url_id = %s
                 ORDER BY created_at DESC"""
     with conn:
@@ -109,7 +124,34 @@ def add_check_url(id):
                                         description)
                 VALUES (%s, %s, %s, %s, %s)
                 """
+    sql_find = """
+                SELECT *
+                FROM urls WHERE id = %s
+                """
+    with conn.cursor() as curs:
+            curs.execute(sql_find, (id,))
+            url_info = curs.fetchone()
+
+    try:
+        response = requests.get(url_info[1], timeout=1.5)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        app.logger.error(f"Произошла ошибка при проверке: {e}")
+        flash('Произошла ошибка при проверке', 'danger')
+        return redirect(url_for('show_url', id=id))
+
     with conn:
         with conn.cursor() as curs:
-            curs.execute(sql_ins, (id, '0', 'n/a', 'n/a', 'n/a',))
-    return redirect(url_for('show_url', id=id), code=302)
+#            curs.execute(sql_find, (id,))
+#            url_info = curs.fetchone()
+#            print(url_info)
+            sc = requests.get(url_info[1]).status_code
+            curs.execute(sql_ins, (id, sc, '', '', '',))
+
+    flash('Страница успешно проверена', 'success')
+    return redirect(url_for (
+                                'show_url',
+                                id=id,
+                                sc=sc,
+                            ),
+                            code=302)
