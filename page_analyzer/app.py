@@ -8,6 +8,7 @@ from flask import Flask, render_template, \
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 from validators import url
+from page_analyzer.parser import get_data
 
 load_dotenv()
 
@@ -44,7 +45,7 @@ def urls_get():
         """        
     with conn.cursor() as curs:
         curs.execute(sql)
-        all_urls = curs.fetchall()
+        all_urls = curs.fetchall()   # Переделать вывод из кортежа в словарь!!!
 #        print(all_urls)
 #        for row in all_urls:
 #            print(row)
@@ -98,7 +99,7 @@ def show_url(id):
                 name,
                 TO_CHAR(created_at, 'YYYY-MM-DD') AS date
                 FROM urls WHERE  id = %s"""
-    sql_ch = """SELECT id, status_code, created_at
+    sql_ch = """SELECT id, status_code, h1, title, description, created_at
                 FROM url_checks WHERE  url_id = %s
                 ORDER BY created_at DESC"""
     with conn:
@@ -107,6 +108,7 @@ def show_url(id):
             data = curs.fetchone()
             curs.execute(sql_ch, (id,))
             check_data = curs.fetchall()
+#            print(check_data)
     return render_template(
         'show.html',
         id=data[0],
@@ -140,18 +142,38 @@ def add_check_url(id):
         flash('Произошла ошибка при проверке', 'danger')
         return redirect(url_for('show_url', id=id))
 
+    sc = requests.get(url_info[1]).status_code
+    row = get_data(response)
+    row['status'] = sc
+    
+    if row['h1'] is None:
+        row['h1'] = ''
+    if row['title'] is None:
+        row['title'] = ''
+    if row['description'] is not None and len(row['description']) > 250:
+        row['description'] = f"{row['description'][:189]}..."
+    elif row['description'] is None:
+        row['description'] = ''
+
     with conn:
         with conn.cursor() as curs:
 #            curs.execute(sql_find, (id,))
 #            url_info = curs.fetchone()
 #            print(url_info)
-            sc = requests.get(url_info[1]).status_code
-            curs.execute(sql_ins, (id, sc, '', '', '',))
-
+#            sc = requests.get(url_info[1]).status_code
+#            curs.execute(sql_ins, (id, sc, '', '', '',))
+            curs.execute(sql_ins, (id,
+                                row['status'],
+                                row['h1'],
+                                row['title'],
+                                row['description'],
+                                ))
+    #        data_url = curs.fetchone()
     flash('Страница успешно проверена', 'success')
     return redirect(url_for (
                                 'show_url',
                                 id=id,
-                                sc=sc,
+#                                sc=sc,
+#                                data=data_url,
                             ),
                             code=302)
