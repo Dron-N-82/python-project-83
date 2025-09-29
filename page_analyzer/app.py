@@ -87,7 +87,7 @@ def add_check_url(id):
     url_info = repo.find_id_url(id)
 
     try:
-        response = requests.get(url_info['name'], timeout=1.5)
+        response = requests.get(url_info['name'], timeout=5)
         response.raise_for_status()
     except requests.RequestException as e:
         app.logger.error(f"Произошла ошибка при проверке: {e}")
