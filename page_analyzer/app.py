@@ -1,5 +1,5 @@
-import psycopg2
-#from psycopg2.extras import RealDictCursor
+# import psycopg2
+# from psycopg2.extras import RealDictCursor
 import os
 import requests
 from flask import Flask, render_template, \
@@ -9,13 +9,16 @@ from urllib.parse import urlparse
 from dotenv import load_dotenv
 from validators import url
 from page_analyzer.parser import get_data
+from page_analyzer.db import UrlRepository
+from page_analyzer.validator import normalization
+
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
-conn = psycopg2.connect(DATABASE_URL)
+# conn = psycopg2.connect(DATABASE_URL)
 
 
 @app.route("/")
@@ -28,61 +31,32 @@ def index():
 
 @app.route("/urls")
 def urls_get():
-
-    sql = """
-        SELECT *
-        FROM (
-            SELECT DISTINCT ON (u.id)
-                u.id,
-                u.name,
-                uc.created_at AS check_date,
-                uc.status_code
-            FROM urls u
-            LEFT JOIN url_checks uc ON uc.url_id = u.id
-            ORDER BY u.id, uc.created_at DESC
-        ) sub
-        ORDER BY sub.id DESC;
-        """        
-    with conn.cursor() as curs:
-        curs.execute(sql)
-        all_urls = curs.fetchall()   # Переделать вывод из кортежа в словарь!!!
-#        print(all_urls)
-#        for row in all_urls:
-#            print(row)
-#            if row[2] is None:
-#                row[2] = ''
-#            if row[3] is None:
-#                row[3] = ''
+    repo = UrlRepository(DATABASE_URL)
+    all_urls = repo.get_all_list_urls()
 
     return render_template('list_urls.html', urls=all_urls)
 
 @app.route("/urls", methods=['POST'])
 def add_url():
     name = request.form.get('url')
-    urls = urlparse(name)
+    # urls = urlparse(name)
+    # norm_url = f'{urls.scheme}://{urls.netloc}'
 
-    norm_url = f'{urls.scheme}://{urls.netloc}'
-
-    sql_check = "SELECT id FROM urls WHERE name = %s"
-    sql_ins = "INSERT INTO urls (name) VALUES (%s)"
+    norm_url = normalization(name)
     
+    repo = UrlRepository(DATABASE_URL)
+
     if url(name): # Проверка на валидность
         app.logger.info("Добавляем ссылку в БД")
         try:
-            with conn:
-                with conn.cursor() as curs:
-                    # Проверка существования записи
-                    curs.execute(sql_check, (norm_url,))
-                    data = curs.fetchone()
-                    if data: # если запись в БД существует
-                        app.logger.info("Такая ссылка уже есть в базе.")
-                        flash('URL уже существует', 'info')
-                    else: # если записи в БД нет
-                        curs.execute(sql_ins, (norm_url,))
-                        app.logger.info("Cсылка успешно добавлна в БД")
-                        curs.execute(sql_check, (norm_url,))
-                        data = curs.fetchone()
-                        flash('URL успешно добавлен', 'success')
+            data = repo.check_id(norm_url)
+            if data: # если запись в БД существует
+                app.logger.info("Такая ссылка уже есть в базе.")
+                flash('URL уже существует', 'info')
+            else: # если записи в БД нет
+                data = repo.ins_url(norm_url)
+                app.logger.info("Cсылка успешно добавлна в БД")
+                flash('URL успешно добавлен', 'success')
         except Exception as e:
             app.logger.error(f"Произошла ошибка при добавлении ссылки: {e}")
     else:
@@ -90,59 +64,37 @@ def add_url():
         flash('Некорректный URL', 'danger')
         messages = get_flashed_messages(with_categories=True)
         return render_template('index.html', messages=messages, value=name), 422
-    return redirect(url_for('show_url', id=data[0]), code=302)
+    return redirect(url_for('show_url', id=data['id']), code=302)
 
 @app.route("/urls/<id>")
 def show_url(id):
+    repo = UrlRepository(DATABASE_URL)
     messages = get_flashed_messages(with_categories=True)
-    sql = """SELECT id,
-                name,
-                TO_CHAR(created_at, 'YYYY-MM-DD') AS date
-                FROM urls WHERE  id = %s"""
-    sql_ch = """SELECT id, status_code, h1, title, description, created_at
-                FROM url_checks WHERE  url_id = %s
-                ORDER BY created_at DESC"""
-    with conn:
-        with conn.cursor() as curs:
-            curs.execute(sql, (id,))
-            data = curs.fetchone()
-            curs.execute(sql_ch, (id,))
-            check_data = curs.fetchall()
-#            print(check_data)
+
+    url_data = repo.find_id_url(id)
+    check_data = repo.sel_checks_url(id)
+
     return render_template(
         'show.html',
-        id=data[0],
-        name=data[1],
-        date=data[2],
+        url_data=url_data,
         check_data=check_data,
         messages=messages,
     )
 
 @app.route("/urls/<id>/checks", methods=['POST'])
 def add_check_url(id):
-    sql_ins = """INSERT INTO url_checks (url_id,
-                                        status_code,
-                                        h1, title,
-                                        description)
-                VALUES (%s, %s, %s, %s, %s)
-                """
-    sql_find = """
-                SELECT *
-                FROM urls WHERE id = %s
-                """
-    with conn.cursor() as curs:
-            curs.execute(sql_find, (id,))
-            url_info = curs.fetchone()
+    repo = UrlRepository(DATABASE_URL)
+    url_info = repo.find_id_url(id)
 
     try:
-        response = requests.get(url_info[1], timeout=1.5)
+        response = requests.get(url_info['name'], timeout=1.5)
         response.raise_for_status()
     except requests.RequestException as e:
         app.logger.error(f"Произошла ошибка при проверке: {e}")
         flash('Произошла ошибка при проверке', 'danger')
         return redirect(url_for('show_url', id=id))
 
-    sc = requests.get(url_info[1]).status_code
+    sc = requests.get(url_info['name']).status_code
     row = get_data(response)
     row['status'] = sc
     
@@ -155,25 +107,10 @@ def add_check_url(id):
     elif row['description'] is None:
         row['description'] = ''
 
-    with conn:
-        with conn.cursor() as curs:
-#            curs.execute(sql_find, (id,))
-#            url_info = curs.fetchone()
-#            print(url_info)
-#            sc = requests.get(url_info[1]).status_code
-#            curs.execute(sql_ins, (id, sc, '', '', '',))
-            curs.execute(sql_ins, (id,
-                                row['status'],
-                                row['h1'],
-                                row['title'],
-                                row['description'],
-                                ))
-    #        data_url = curs.fetchone()
+    repo.ins_check_url(url_info, row)
     flash('Страница успешно проверена', 'success')
     return redirect(url_for (
                                 'show_url',
                                 id=id,
-#                                sc=sc,
-#                                data=data_url,
                             ),
                             code=302)
