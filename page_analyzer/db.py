@@ -7,7 +7,8 @@ class DatabaseConnection:
         self.database_url = database_url
 
     def __enter__(self):
-        self.conn = psycopg2.connect(self.database_url, cursor_factory=RealDictCursor)
+        self.conn = psycopg2.connect(self.database_url, \
+                    cursor_factory=RealDictCursor)
         self.cur = self.conn.cursor()
         return self.cur
 
@@ -64,12 +65,9 @@ class UrlRepository:
     # Добавление адреса сайта в таблицу urls
     def ins_url(self, norm_url):
         sql_ins = "INSERT INTO urls (name) VALUES (%s) RETURNING id"
-        # print(f'db.py 66 {norm_url}')
         with self.cursor as curs:
-            # print(f'db.py 68 {norm_url}')
             curs.execute(sql_ins, (norm_url,))
             id_ins = curs.fetchone()
-            # print(f'db.py 71 {id_ins}')
             return id_ins
 
     # Выбор строки из таблцы urls по id
@@ -107,5 +105,5 @@ class UrlRepository:
         with self.cursor as curs:
             curs.execute(sql_ch, (id,))
             check_data = curs.fetchall()
-            
+
             return check_data

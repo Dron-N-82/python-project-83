@@ -5,7 +5,7 @@ import requests
 from flask import Flask, render_template, \
     request, flash, get_flashed_messages, \
     redirect, url_for
-from urllib.parse import urlparse
+# from urllib.parse import urlparse
 from dotenv import load_dotenv
 from validators import url
 from page_analyzer.parser import get_data
@@ -23,11 +23,12 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 
 @app.route("/")
 def index():
-#    if conn:
-#        return "SQL подключение выполнено"
+    # if conn:
+    #     return "SQL подключение выполнено"
     app.logger.info("Получен запрос к главной странице")
     value = ''
     return render_template('index.html', value=value), 200
+
 
 @app.route("/urls")
 def urls_get():
@@ -35,6 +36,7 @@ def urls_get():
     all_urls = repo.get_all_list_urls()
 
     return render_template('list_urls.html', urls=all_urls)
+
 
 @app.route("/urls", methods=['POST'])
 def add_url():
@@ -46,17 +48,18 @@ def add_url():
     
     repo = UrlRepository(DATABASE_URL)
 
-    if url(name): # Проверка на валидность
+    if url(name):  # Проверка на валидность
         app.logger.info("Добавляем ссылку в БД")
         try:
             data = repo.check_id(norm_url)
-            if data: # если запись в БД существует
+            if data:  # если запись в БД существует
                 app.logger.info("Страница уже существует")
                 flash('Страница уже существует', 'info')
-            else: # если записи в БД нет
+            else:  # если записи в БД нет
                 data = repo.ins_url(norm_url)
-                app.logger.info("Страница успешно добавленаД")
+                app.logger.info("Страница успешно добавлена")
                 flash('Страница успешно добавлена', 'success')
+
         except Exception as e:
             app.logger.error(f"Произошла ошибка при добавлении ссылки: {e}")
     else:
@@ -65,6 +68,7 @@ def add_url():
         messages = get_flashed_messages(with_categories=True)
         return render_template('index.html', messages=messages, value=name), 422
     return redirect(url_for('show_url', id=data['id']), code=302)
+
 
 @app.route("/urls/<id>")
 def show_url(id):
@@ -80,6 +84,7 @@ def show_url(id):
         check_data=check_data,
         messages=messages,
     )
+
 
 @app.route("/urls/<id>/checks", methods=['POST'])
 def add_check_url(id):
