@@ -51,12 +51,12 @@ def add_url():
         try:
             data = repo.check_id(norm_url)
             if data: # если запись в БД существует
-                app.logger.info("Такая ссылка уже есть в базе.")
-                flash('URL уже существует', 'info')
+                app.logger.info("Страница уже существует")
+                flash('Страница уже существует', 'info')
             else: # если записи в БД нет
                 data = repo.ins_url(norm_url)
-                app.logger.info("Cсылка успешно добавлна в БД")
-                flash('URL успешно добавлен', 'success')
+                app.logger.info("Страница успешно добавленаД")
+                flash('Страница успешно добавлена', 'success')
         except Exception as e:
             app.logger.error(f"Произошла ошибка при добавлении ссылки: {e}")
     else:
@@ -109,8 +109,8 @@ def add_check_url(id):
 
     repo.ins_check_url(url_info, row)
     flash('Страница успешно проверена', 'success')
-    return redirect(url_for (
-                                'show_url',
-                                id=id,
+    return redirect(url_for(
+                            'show_url',
+                            id=id,
                             ),
                             code=302)
