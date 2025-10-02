@@ -13,14 +13,23 @@ https://python-project-83-ht8g.onrender.com
 ### Инструменты и описание:
 
 [uv](https://docs.astral.sh/uv/) — быстрый пакет Python и менеджер проектов
+
 [ruff](https://docs.astral.sh/ruff/) — линтер
+
 [Flask](https://flask.palletsprojects.com/en/stable/) — фреймворк для создания веб-приложений на языке программирования Python
+
 [Gunicorn](https://docs.gunicorn.org/en/latest/index.html) — минивеб-сервер, осуществляющий запуск Python-приложения
+
 [python-dotenv](https://pypi.org/project/python-dotenv/) — управление переменными окружения, считывая пары «ключ-значение» из .env файла. Это помогает в разработке приложений, основанных на принципах 12 факторов.
+
 [Bootstrap](https://getbootstrap.com/docs/5.3/getting-started/introduction/) — скомпилированный CSS и JavaScript, это мощный и многофункциональный набор инструментов для фронтенда.
+
 [Psycopg](https://getbootstrap.com/docs/5.3/getting-started/introduction/) — самый популярный адаптер баз данных PostgreSQL для языка программирования Python
+
 [validators](https://validators.readthedocs.io/en/latest/#module-validators.url) — модуль для проверки данных на соответствие критериям в Python
+
 [Requests](https://requests.readthedocs.io/en/latest/) — библиотека для языка Python, осуществляющая работу с HTTP-запросами
+
 [Beautifulsoup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/) — библиотека Python, используемая для парсинга HTML и XML документов
 
 ## Установка
