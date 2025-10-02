@@ -4,7 +4,7 @@ import os
 import requests
 from flask import Flask, render_template, \
     request, flash, get_flashed_messages, \
-    redirect, url_for
+    abort, redirect, url_for
 # from urllib.parse import urlparse
 from dotenv import load_dotenv
 from validators import url
@@ -78,6 +78,9 @@ def show_url(id):
     url_data = repo.find_id_url(id)
     check_data = repo.sel_checks_url(id)
 
+    if not url_data:
+        abort(404)
+
     return render_template(
         'show.html',
         url_data=url_data,
@@ -119,3 +122,8 @@ def add_check_url(id):
                             id=id,
                             ),
                             code=302)
+
+
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template('errors/404.html'), 404
