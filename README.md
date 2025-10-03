@@ -1,13 +1,13 @@
-# Page Analyzer
-
-## Описание
-Page Analyzer – это сайт, который анализирует указанные страницы на SEO-пригодность по аналогии с PageSpeed Insights
-
 ### Hexlet tests and SonarQube:
 [![Actions Status](https://github.com/Dron-N-82/python-project-83/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/Dron-N-82/python-project-83/actions)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Dron-N-82_python-project-83&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Dron-N-82_python-project-83)
 
-### Deploy:
+# Page Analyzer
+
+## Описание
+Page Analyzer – это сайт, который анализирует указанные страницы на SEO-пригодность по аналогии с [PageSpeed Insights](https://pagespeed.web.dev/)
+
+### Демонстрационный проект:
 https://python-project-83-ht8g.onrender.com
 
 ### Инструменты и описание:
