@@ -37,7 +37,7 @@ https://python-project-83-ht8g.onrender.com
 ### Склонировать репозиторий:
 
 ```
-git clone git@github.com:lyovaparsyan94/python-project-83.git
+git clone git@github.com:Dron-N-82/python-project-83.git
 
 cd python-project-83
 ```
